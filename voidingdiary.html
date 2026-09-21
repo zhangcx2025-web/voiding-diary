@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>24小时排尿日记</title>
+<style>
+    :root {
+        --primary-color: #007aff;
+        --bg-color: #f4f6f9;
+        --card-bg: #ffffff;
+        --text-main: #333333;
+        --text-muted: #888888;
+        --border-color: #e5e5ea;
+        --danger-color: #ff3b30;
+        --success-color: #34c759;
+    }
+
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: var(--bg-color); color: var(--text-main); margin: 0; padding: 15px; padding-bottom: 40px; }
+    
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 20px; margin: 0 0 5px 0; color: var(--primary-color); }
+    .header p { font-size: 12px; color: var(--text-muted); margin: 0; line-height: 1.5; }
+
+    .card { background-color: var(--card-bg); border-radius: 12px; padding: 20px; margin-bottom: 15px; box-shadow: 0 2px 10px rgba(0,0,0,0.03); }
+    .card-title { font-size: 15px; font-weight: bold; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+
+    .input-group { margin-bottom: 15px; display: flex; flex-wrap: wrap; gap: 10px; }
+    .input-half { flex: 1; min-width: 45%; }
+    .input-full { width: 100%; }
+    label { display: block; font-size: 13px; margin-bottom: 5px; color: #555; }
+    .required-star { color: var(--danger-color); margin-left: 2px; }
+    input, select, textarea { width: 100%; padding: 10px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none; background-color: #fff; -webkit-appearance: none; }
+    
+    .item-box { border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; margin-bottom: 12px; background: #fafbfc; position: relative; }
+    .item-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 8px; }
+    .item-full { grid-column: span 2; }
+    
+    button { padding: 12px 14px; border-radius: 8px; border: none; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+    .btn-add { background-color: #eaf2ff; color: var(--primary-color); width: 100%; margin-top: 5px; }
+    .btn-del { background-color: #ffeeee; color: var(--danger-color); padding: 6px 12px; font-size: 12px; border-radius: 6px; float: right; }
+    
+    .btn-generate { background-color: var(--primary-color); color: white; width: 100%; padding: 14px; margin-top: 10px; }
+    .btn-submit { background-color: var(--success-color); color: white; width: 100%; padding: 14px; margin-top: 15px; }
+    .btn-clear { background-color: transparent; color: var(--text-muted); width: 100%; padding: 10px; font-size: 13px; margin-top: 10px; text-decoration: underline; }
+    
+    #summaryCard { display: none; border: 1px solid var(--primary-color); background: #f8fbff; }
+    .summary-text { font-family: monospace; font-size: 13px; color: #333; background: #fff; padding: 12px; border-radius: 6px; border: 1px dashed #bcdcff; white-space: pre-wrap; line-height: 1.5; margin-bottom: 10px; }
+    
+    .toast { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: rgba(0,0,0,0.8); color: white; padding: 12px 24px; border-radius: 8px; font-size: 14px; display: none; z-index: 100; text-align: center; width: 80%; }
+</style>
+</head>
+<body>
+
+<div class="header">
+    <h1>24小时排尿日记</h1>
+    <p>请如实记录全天情况<br>可中途关闭网页，数据会自动保存在手机本地</p>
+</div>
+
+<div class="card">
+    <div class="card-title">基本信息</div>
+    <div class="input-group">
+        <div class="input-half">
+            <label>姓名 <span class="required-star">*</span></label>
+            <input type="text" id="patientName" placeholder="您的姓名" onchange="saveToLocal()">
+        </div>
+        <div class="input-half">
+            <label>门诊号 <span class="required-star">*</span></label>
+            <input type="text" id="patientId" placeholder="如：001234" onchange="saveToLocal()">
+        </div>
+        <div class="input-full">
+            <label>联系电话 <span class="required-star">*</span></label>
+            <input type="tel" id="patientPhone" placeholder="便于医生跟进随访" onchange="saveToLocal()">
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-title">💧 饮水记录</div>
+    <div id="drinkList"></div>
+    <button class="btn-add" onclick="addDrink()">+ 增加一次饮水</button>
+</div>
+
+<div class="card">
+    <div class="card-title">🚽 排尿记录</div>
+    <div id="voidList"></div>
+    <button class="btn-add" onclick="addVoid()">+ 增加一次排尿</button>
+</div>
+
+<div class="card">
+    <div class="card-title">📌 全天情况总结 (选填)</div>
+    <textarea id="note" rows="3" placeholder="例如：今天吃了利尿剂、今天发烧出汗很多等影响排尿的特殊情况..." onchange="saveToLocal()"></textarea>
+</div>
+
+<button class="btn-generate" onclick="generateSummary()">生成排尿日记</button>
+<button class="btn-clear" onclick="clearLocalData()">清空本次记录 (重新开始)</button>
+
+<div class="card" id="summaryCard">
+    <div class="card-title" style="border-bottom: none; color: var(--primary-color);">📋 日记汇总预览</div>
+    <div class="summary-text" id="summaryContent"></div>
+    <button class="btn-submit" id="submitBtn" onclick="sendToDoctor()">一键发送给医生</button>
+</div>
+
+<div class="toast" id="toastMsg">提示信息</div>
+
+<script>
+const PUSH_TOKEN = "943816c765dc45878b369b07a937c1dc"; 
+const STORAGE_KEY = "voidDiaryLocalData_v4";
+let generatedTextContext = ""; 
+
+function showToast(msg, duration = 2500) {
+    const toast = document.getElementById("toastMsg");
+    toast.innerText = msg;
+    toast.style.display = "block";
+    setTimeout(() => { toast.style.display = "none"; }, duration);
+}
+
+window.onload = function(){
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if(saved){
+        try {
+            const data = JSON.parse(saved);
+            document.getElementById("patientName").value = data.patientName || "";
+            document.getElementById("patientId").value = data.patientId || "";
+            document.getElementById("patientPhone").value = data.patientPhone || "";
+            document.getElementById("note").value = data.note || "";
+            if (data.drinkItems) data.drinkItems.forEach(item => renderDrinkItem(item));
+            if (data.voidItems) data.voidItems.forEach(item => renderVoidItem(item));
+        } catch(e) {
+            console.error("Local data parse error", e);
+        }
+    }
+}
+
+function saveToLocal(){
+    const data = collectData();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    document.getElementById("summaryCard").style.display = "none";
+}
+
+function collectData(){
+    const patientName = document.getElementById("patientName").value.trim();
+    const patientId = document.getElementById("patientId").value.trim();
+    const patientPhone = document.getElementById("patientPhone").value.trim();
+    const note = document.getElementById("note").value.trim();
+    
+    const drinkItems = [];
+    document.querySelectorAll("#drinkList .item-box").forEach(el => {
+        drinkItems.push({
+            time: el.querySelector(".drinkTime").value,
+            type: el.querySelector(".drinkType").value,
+            vol: el.querySelector(".drinkVol").value
+        });
+    });
+    
+    const voidItems = [];
+    document.querySelectorAll("#voidList .item-box").forEach(el => {
+        voidItems.push({
+            time: el.querySelector(".voidTime").value,
+            vol: el.querySelector(".voidVol").value,
+            urgency: el.querySelector(".urgency").value,
+            leak: el.querySelector(".leak").value,
+            note: el.querySelector(".voidNote").value
+        });
+    });
+    
+    return { patientName, patientId, patientPhone, drinkItems, voidItems, note };
+}
+
+function renderDrinkItem(item = {}){
+    const wrap = document.getElementById("drinkList");
+    const div = document.createElement("div");
+    div.className = "item-box";
+    div.innerHTML = `
+        <div style="margin-bottom: 10px; overflow: hidden;">
+            <span style="font-size:13px; color:#555; font-weight:bold;">饮水明细</span>
+            <button class="btn-del" onclick="this.parentElement.parentElement.remove();saveToLocal();">删除</button>
+        </div>
+        <div class="item-grid">
+            <div><label>时间</label><input type="time" class="drinkTime" onchange="saveToLocal()" value="${item.time || ''}"></div>
+            <div><label>容量(ml)</label><input type="number" class="drinkVol" placeholder="估算量" onchange="saveToLocal()" value="${item.vol || ''}"></div>
+            <div class="item-full"><label>饮品类型</label><input type="text" class="drinkType" placeholder="如：白开水/茶/咖啡" onchange="saveToLocal()" value="${item.type || '白开水'}"></div>
+        </div>
+    `;
+    wrap.appendChild(div);
+}
+
+function addDrink(){
+    renderDrinkItem();
+    saveToLocal();
+}
+
+function renderVoidItem(item = {}){
+    const wrap = document.getElementById("voidList");
+    const div = document.createElement("div");
+    div.className = "item-box";
+    div.innerHTML = `
+        <div style="margin-bottom: 10px; overflow: hidden;">
+            <span style="font-size:13px; color:#555; font-weight:bold;">排尿明细</span>
+            <button class="btn-del" onclick="this.parentElement.parentElement.remove();saveToLocal();">删除</button>
+        </div>
+        <div class="item-grid">
+            <div><label>时间</label><input type="time" class="voidTime" onchange="saveToLocal()" value="${item.time || ''}"></div>
+            <div><label>尿量(ml)</label><input type="number" class="voidVol" placeholder="估算量" onchange="saveToLocal()" value="${item.vol || ''}"></div>
+            <div><label>尿急程度</label>
+                <select class="urgency" onchange="saveToLocal()">
+                    <option value="无">无</option><option value="轻度">轻度</option><option value="中度">中度</option><option value="重度">重度</option>
+                </select>
+            </div>
+            <div><label>漏尿情况</label>
+                <select class="leak" onchange="saveToLocal()">
+                    <option value="无">无</option><option value="少量">少量</option><option value="较多">较多</option>
+                </select>
+            </div>
+            <div class="item-full"><label>单次备注 (选填)</label><input type="text" class="voidNote" placeholder="如：本次伴有尿痛或血尿" onchange="saveToLocal()" value="${item.note || ''}"></div>
+        </div>
+    `;
+    if(item.urgency) div.querySelector(".urgency").value = item.urgency;
+    if(item.leak) div.querySelector(".leak").value = item.leak;
+    wrap.appendChild(div);
+}
+
+function addVoid(){
+    renderVoidItem();
+    saveToLocal();
+}
+
+function clearLocalData(){
+    if(confirm("确定要清空当前所有记录重新开始吗？")) {
+        localStorage.removeItem(STORAGE_KEY);
+        document.getElementById("drinkList").innerHTML = "";
+        document.getElementById("voidList").innerHTML = "";
+        document.getElementById("patientName").value = "";
+        document.getElementById("patientId").value = "";
+        document.getElementById("patientPhone").value = "";
+        document.getElementById("note").value = "";
+        document.getElementById("summaryCard").style.display = "none";
+        showToast("已清空所有记录");
+    }
+}
+
+function generateSummary(){
+    const data = collectData();
+    let totalDrinkVol = 0;
+    let totalVoidVol = 0;
+    
+    let content = `姓名：${data.patientName || "未填写"}\n门诊号：${data.patientId || "未填写"}\n电话：${data.patientPhone || "未填写"}\n\n【饮水记录】\n`;
+    
+    if(data.drinkItems.length === 0) {
+        content += "无记录\n";
+    } else {
+        data.drinkItems.forEach((d, i) => {
+            const vol = parseInt(d.vol) || 0;
+            totalDrinkVol += vol;
+            content += `${i+1}. ${d.time || "未知"} | ${d.type} | ${d.vol || "0"}ml\n`;
+        });
+    }
+    
+    content += "\n【排尿记录】\n";
+    if(data.voidItems.length === 0) {
+        content += "无记录\n";
+    } else {
+        data.voidItems.forEach((v, i) => {
+            const vol = parseInt(v.vol) || 0;
+            totalVoidVol += vol;
+            let singleNote = v.note ? ` | 备注:${v.note}` : "";
+            content += `${i+1}. ${v.time || "未知"} | ${v.vol || "0"}ml | 尿急:${v.urgency} | 漏尿:${v.leak}${singleNote}\n`;
+        });
+    }
+    
+    content += `\n【数据汇总】\n`;
+    content += `全天总饮水量：${totalDrinkVol} ml\n`;
+    content += `全天总排尿量：${totalVoidVol} ml\n`;
+    
+    content += `\n【全天总结】\n${data.note || "无"}\n\n生成时间：${new Date().toLocaleString()}`;
+
+    generatedTextContext = content;
+    document.getElementById("summaryContent").innerText = content;
+    
+    const summaryCard = document.getElementById("summaryCard");
+    summaryCard.style.display = "block";
+    summaryCard.scrollIntoView({ behavior: 'smooth' });
+}
+
+async function sendToDoctor(){
+    const data = collectData();
+    const btn = document.getElementById("submitBtn");
+
+    if (!data.patientName) {
+        showToast("发送失败：请向上滚动，补充患者姓名！");
+        document.getElementById("patientName").focus();
+        return;
+    }
+    if (!data.patientId) {
+        showToast("发送失败：请向上滚动，补充门诊号！");
+        document.getElementById("patientId").focus();
+        return;
+    }
+    if (!data.patientPhone) {
+        showToast("发送失败：请向上滚动，补充联系电话！");
+        document.getElementById("patientPhone").focus();
+        return;
+    }
+
+    if (data.drinkItems.length === 0 && data.voidItems.length === 0) {
+        showToast("当前未记录任何饮水或排尿数据，无法发送");
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerText = "正在发送...";
+
+    try {
+        const res = await fetch("https://www.pushplus.plus/send", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                token: PUSH_TOKEN,
+                title: "【24小时排尿日记】",
+                content: generatedTextContext,
+                template: "txt" 
+            })
+        });
+        const ret = await res.json();
+        if(ret.code === 200){
+            showToast("✅ 提交成功！医生已收到您的日记。");
+            localStorage.removeItem(STORAGE_KEY); 
+            btn.innerText = "已发送成功";
+        } else {
+            showToast("❌ 发送失败: " + (ret.msg || "未知错误"));
+            btn.disabled = false;
+            btn.innerText = "重新发送给医生";
+        }
+    } catch(err) {
+        showToast("❌ 网络异常，请检查网络后重试");
+        btn.disabled = false;
+        btn.innerText = "重新发送给医生";
+    }
+}
+</script>
+</body>
+</html>
